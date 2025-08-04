@@ -1,0 +1,55 @@
+
+# Quick start 
+
+## Set up environment
+```
+# clone the github repo and then type the following in the shell
+conda env create -f environment.yml
+# activate the enviornment 
+conda activate pastaenv
+```
+## A quick example 
+The example dataset can be downloaded from our github page under the folder `example_data`. 
+The data can be extracted by
+```
+import pickle
+file = open('test.pkl', 'rb')
+sp_adata = pickle.load(file)
+sc_adata = pickle.load(file)
+cluster = pickle.load(file)
+coords = pickle.load(file)
+pthw_genes = pickle.load(file)
+file.close()
+```
+The ST dataset (`sp_adata`) contains 15823 cells and 133 genes. 
+The scRNA-seq dataset (`sc_adata`) contains 3000 cells and 712 genes. 
+Both of them are in `h5ad` format. 
+The cell type annotation and coordinates of the ST dataset can be found in `cluster` and `coords`. 
+`pthw_genes` is a list of genes from a GOBP pathway. 
+
+Then we can run the analysis using 
+```
+import os
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+mapper.pp_adatas(sc_adata, sp_adata)
+ad_map = mapper.mapping(sc_adata, sp_adata, genes, sp_coords=coords, ncell_thres=10,
+    sp_celltypes=cluster["Cluster"], lambda_g2=2, num_epochs=500)
+pthw_exp = utils.project_genes(adata_map=ad_map, adata_sc=sc_adata, pthw=genes)
+```
+If you would like to run the imputation for multiple pathways, you can use the `run_batch` function. 
+```
+# we still use the pickle file as an example
+pathway = ["p1"] * (len(pthw) // 2) + ["p2"] * (len(pthw) - len(pthw) // 2)
+pthw_d = pd.DataFrame({'gene': pthw, 'pathway': pathway}) # input to the run_batch function
+
+# the pathway input to the run_batch function should be a dataframe contains two columns with name as "genes" (gene names) and "pathway" (pathway names)
+result = utils.run_batch(sc_adata, sp_adata, pthw_d, sp_coords=coords, ncell_thres=10, lambda_1=1, lambda_2=1, lambda_3=1, lambda_4=1,
+    sp_celltypes=cluster["Cluster"], num_epochs=500, folder="./test/")
+# we ask users to provide a folder to write each pathway as a csv file
+```

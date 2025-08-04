@@ -1,0 +1,494 @@
+# Human Xenium Lung Dataset 
+## Imputation
+The ST dataset can be downloaded from https://www.10xgenomics.com/datasets/ffpe-human-lung-cancer-data-with-human-immuno-oncology-profiling-panel-and-custom-add-on-1-standard.
+The corresponding scRNA-seq dataset can be downloaded from https://cells.ucsc.edu/. 
+
+```
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+# ST data preprocess 
+mat = pd.read_csv("gene_expression_lung.csv") # the gene expression file from ST data
+mat.index = mat.iloc[\:, 0]
+mat_f = mat.drop("Unnamed: 0", axis=1)
+mat_f = mat_f.T
+
+# get the centroid for the cells 
+coords = pd.read_csv("centroid.csv") # the centroid file from ST data
+coords_f = coords.loc[coords["cell"].isin(mat_f.index), :]
+coords_f.index = coords_f["cell"]
+coords_f = coords_f.reindex(mat_f.index)
+
+# get the cluster file for the ST data 
+# we used the kmeans 7 clusters provided by the dataset 
+cluster = pd.read_csv("clusters.csv")
+cluster.index = cluster["Barcode"]
+cluster_f = cluster.loc[cluster["Barcode"].isin(mat_f.index), :]
+
+# read the scRNA-seq data
+# assume it is in the folder named as "SCdata"
+ad = sc.read_text("./SCdata/exprMatrix.tsv.gz")
+meta = pd.read_csv("./SCdata/meta.tsv", sep="\t")
+ad.var = meta
+sc_df = ad.to_df()
+sc_df.index = sc_df.index.str.split("|").str[0]
+sc_df.columns = ad.var["cellId"]
+# randomly select 3000 sc for training to shorter training time 
+idx = random.sample(range(sc_df.shape[1]), 3000)
+sc_df_f = sc_df.iloc[:, idx]
+sc_df_f = sc_df_f.T
+
+# then we can get pathway 
+# the pathway can be downloaded from https://www.gsea-msigdb.org/gsea/msigdb/collections.jsp
+# for this ST data, we used hallmark pathways. 
+# for the imputation, we just need the list of genes of the pathway  
+
+# change the dataframe to anndata format 
+sp_adata = sc.AnnData(mat_f)
+sc_adata = sc.AnnData(sc_df_f)
+# filter the low expressed genes
+sc.pp.filter_genes(sp_adata, min_cells=1)
+sc.pp.filter_genes(sc_adata, min_cells=1)
+
+# train the model
+mapper.pp_adatas(sc_adata, sp_adata)
+map = mapper.mapping(sc_adata, sp_adata, pthw_genes, sp_coords=coords, ncell_thres=10,
+    sp_celltypes=cluster["Cluster"], lambda_g2=2, num_epochs=500)
+# get the predictions
+pthw_exp = utils.project_genes(adata_map=map, adata_sc=sc_adata, pthw=genes)
+# we can save the predictions as csv file for the downstream analysis
+d = pd.DataFrame([pthw_exp.values, coords_f.loc[:, "x"], coords_f.loc[:, "y"]])
+d = d.T
+d.columns = ["pthw_exp", "x", "y"]
+d.to_csv("./predicted.csv")
+```
+## Pathway enrichment (run in R)
+```
+library(dplyr)
+
+path <- "path_to_imputed_pathway_folder" # the folder contains the CSV files for the pathways (pathway1.csv, pathway2.csv, ...)
+f <- list.files(path)
+
+# read the cell type file
+celltype <- read.csv("celltype.csv") # change to your own cell type file
+celltype_table <- table(celltype$cell_type) # a table to see cell count for each cell type 
+
+test <- NULL
+for(i in seq(f_immun)){
+        wilc_test <- NULL
+        for(j in seq(nrow(cell_table))){
+                d <- read.csv(paste0(path, f[i])) # this read the imputed pathway 
+                d$cell_type <- celltype$cell_type
+                d$group <- ifelse(d$Cell_type == cell_table$Var1[j], 1, 2)
+                wilc_test[[j]] <- wilcox.test(X0 ~ group, data=d, alternative="greater")
+        }
+        test[[i]] <- wilc_test
+}
+
+test_table <- NULL
+for(i in seq(test)){
+        target <- test[[i]]
+        target <- lapply(target, function(y) data.frame(wilcox_stat = y$statistic, wilcox_p = y$p.value))
+        target <- do.call(rbind, target)
+        target$cell_type <- cell_table$Var1
+        target$pathway <- gsub(".csv", "", f_immun[i])
+        test_table[[i]] <- target
+}
+
+test_table <- do.call(rbind, test_table)
+test_table[test_table$wilcox_p >= 0.05, ]$wilcox_stat <- NA
+
+# generate the plot
+ggplot(test_table, aes(celltype, pathway, size=wilcox_stat, color=celltype)) + geom_point() +
+    theme_classic() + scale_color_npg() + labs(x="Cell type") +
+    theme(legend.position="none",
+        axis.text.x=element_text(angle=30, hjust=1),
+        axis.text.y=element_text(size=8),
+        axis.title.y=element_blank())
+```
+## Apply IRIS (run in R)
+```
+library(IRIS) 
+library(data.table)
+
+# read the ST and SC expression matrix 
+st_d <- read.csv("path_to_ST_data")
+st_coord <- read.csv("path_to_ST_data_coordinates")
+
+sc_d <- read.csv("path_to_SC_data")
+sc_meta <- read.csv("path_to_SC_data_meta") # need cell type information and suject information
+
+# set up inputs for iris
+rownames(st_d) <- paste0(coord$centroidX, "x", coord$centroidY) # change cell index
+st_d <- t(st_d)
+rownames(st_coord) <- paste0(st_coord$centroidX, "x", st_coord$centroidY)
+colnames(st_coord) <- c("x", "y")
+
+sc_meta <- sc_meta[, c("name", "class", "donor")] # cell name, cell type, and sample name for each cell
+rownames(sc_meta) <- sc_meta$sample_name
+
+sp_count_list <- list(sp=st_d)
+sp_coord_list <- list(sp=st_coord)
+sc_d <- as.matrix(sc_d)
+
+
+IRIS_object <- createIRISObject(spatial_countMat_list=sp_count_list, spatial_location_list=sp_coord_list,
+                                sc_count=sc_d, sc_meta=sc_meta, ct.varname="class", sample.varname="donor",
+                                minCountGene=10, minCountSpot=3)
+
+numCluster = 2
+#### perform the integrative and refernce-informed domain detection
+IRIS_object <- IRIS_spatial(IRIS_object,numCluster = numCluster)
+
+colors <- c("#ebe5c2", "#D57358")
+# extract the domain labels detected by IRIS
+IRIS_domain <-  IRIS_object@spatialDomain[,c("Slice","spotName","IRIS_domain")]
+# extract the spatial location information
+spatial_location <- IRIS_object@spatialDomain[,c("x","y")]
+spatial_location$x <- IRIS_object@spatialDomain$y
+spatial_location$y <- -IRIS_object@spatialDomain$x 
+IRIS.visualize.domain(IRIS_domain, spatial_location, colors=colors, numCols=1)
+```
+
+# Mefish Mouse Brain Dataset 
+## Imputation
+The ST dataset can be downloaded from https://alleninstitute.github.io/abc\_atlas\_access/descriptions/Zhuang-ABCA-3.html.
+A detailed download instructions is provided. The example session is 'Zhuang-ABCA-3': 'Zhuang-ABCA-3.010'. And we included the celltype (class) with more than 40 cells.
+A notebook of how we get the data can be found at our GitHub repo.
+The scRNA-seq dataset can be downloaded from https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq (Primary Visual Cortex (VISp)). 
+
+```
+# the following script is written in py3
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+# load the sp data 
+gene = pd.read_csv("../merfish_zhang/gene.csv")
+sp = sc.read_h5ad("../merfish_zhang/abca3.h5ad")
+mat = pd.DataFrame(sp.X)
+mat.index = sp.obs.index
+mat.columns = gene["gene_symbol"]
+# get the coords dataframe 
+coords = sp.obs.iloc[:, 6:16]
+
+# load the scRNA-seq
+sc_df = pd.read_csv("./mouse_VISp_2018-06-14_intron-matrix.csv") # downloaded from Allen institute 
+sc_gene = pd.read_csv("./mouse_VISp_2018-06-14_genes-rows.csv")
+sc_df.index = sc_gene["gene_symbol"]
+sc_df = sc_df.drop("Unnamed: 0", axis=1)
+sc_df = sc_df.T
+# select cells so that we can shorter the training time 
+random.seed(2333)
+idx = random.sample(range(sc_df.shape[0]), 3000)
+sc_df_f = sc_df.iloc[idx, :]
+
+sp_adata = sc.AnnData(mat)
+sc_adata = sc.AnnData(sc_df_f)
+
+sc.pp.filter_genes(sp_adata, min_cells=1)
+sc.pp.filter_genes(sc_adata, min_cells=20)
+
+# then we can get pathway 
+# the pathway can be downloaded from https://www.gsea-msigdb.org/gsea/msigdb/collections.jsp
+# for this ST data, we used GOBP pathways which name contains brain. 
+# for the imputation, we just need the list of genes of the pathway  
+
+# train the model
+mapper.pp_adatas(sc_adata, sp_adata)
+map = mapper.mapping(sc_adata, sp_adata, pthw_genes, sp_coords=coords[["x", "y"]], 
+                     ncell_thres=10, sp_celltypes=coords["class"], lambda_g2=2, 
+                     num_epochs=500)
+# get the predictions
+pthw_exp = utils.project_genes(adata_map=map, adata_sc=sc_adata, pthw=pthw_genes)
+# we can save the predictions as csv file for the downstream analysis
+d = pd.DataFrame([pthw_exp.values, coords.loc[:, "x"], coords.loc[:, "y"]])
+d = d.T
+d.columns = ["pthw_exp", "x", "y"]
+d.to_csv("./predicted.csv")
+```
+
+## Cluster using the pathway matrix 
+```
+import pandas as pd
+import scanpy as sc
+import os
+from sklearn.cluster import KMeans
+
+path = "path_to_pathway_expression_folder"
+f = os.listdir(path)
+
+data_l = []
+for file in f:
+    d = pd.read_csv(path + file)
+    d.index = d["cell_label"]
+    d = d.drop("cell_label", axis=1)
+    d_sum = d.sum(axis=1)
+    data_l.append(d_sum)
+
+data = pd.DataFrame(data_l)
+data = data.T
+
+kmeans = KMeans(n_clusters=2)
+kmeans.fit(data)
+label_k2 = kmeans.labels_
+
+cluster = pd.DataFrame([label_k2])
+cluster = cluster.T
+cluster.columns = ["cluster_2"]
+cluster.to_csv("kmeans_pathway_cluster.csv")
+```
+## Trajectory analysis (run in R)
+```
+library(monocle3)
+
+# read the meta file contains cells name of ST data and the cell types
+meta <- read.csv("path_to_meta_file")
+
+path <- "path_to_pathway_expression_folder"
+f <- list.files(path)
+
+# read the pathwaye expression
+pthw_v <- NULL
+for(i in seq(f)){
+        d <- read.csv(paste0(path, f[i]))
+        # you might need to change "pathway_expression" depends on your 
+        pthw_v[[gsub(".csv", "", f[i])]] <- d$pathway_expression  
+}
+
+# prepare the matrix for monocle3
+pthw_mat <- do.call(cbind, pthw_v)
+pthw_mat <- t(pthw_mat)
+colnames(pthw_mat) <- meta$cells
+
+gene_meta <- data.frame(gene_short_name = rownames(pthw_mat), n_cells = rowSums(pthw_mat > 0))
+cell_meta <- data.frame(cell = colnames(pthw_mat))
+cell_meta$cell.type <- meta$celltype
+cell_meta$num_gene_expressed <- colSums(pthw_mat > 0)
+rownames(cell_meta) <- colnames(pthw_mat)
+
+# run monocle3
+cds <- new_cell_data_set(pthw_mat, cell_meta, gene_meta)
+cds <- preprocess_cds(cds, num_dim = 50)
+cds <- reduce_dimension(cds)
+cds <- cluster_cells(cds)
+cds <- learn_graph(cds)
+cds <- order_cells(cds, root_cells="a_cell_name") # you can choose the cell you want as the root 
+
+traj.plot <- plot_cells(cds, color_cells_by = "pseudotime")
+d_pseudotime <- traj.plot["data"] # this will be the dataframe contains pseudotime for each cell
+
+```
+
+# ISS Mouse Primary Visula Cortex Dataset
+The dataset can be downloaded from https://github.com/spacetx-spacejam/data (ISS, mouse VISP). 
+The scRNA-seq dataset can be downloaded from https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq (Primary Visual Cortex (VISp))
+```
+# the following script is written in py3
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+sp = pd.read_csv("../mouse_visp_iss/HCA09_2_cellxgene.csv")
+#sp = sp.loc[sp["centroidX"] < 30000, :]
+coords = sp.iloc[:, 120:122]
+sp = sp.iloc[:, 1:120]
+
+# the cluster can be found in our GitHub repo
+# the cluster was obtained using the R package Seurat 
+cluster_f = pd.read_csv("./mm09_seurat_cluster.csv")
+
+# load the scRNA-seq
+sc_df = pd.read_csv("./mouse_VISp_2018-06-14_intron-matrix.csv") # downloaded from Allen institute 
+sc_gene = pd.read_csv("./mouse_VISp_2018-06-14_genes-rows.csv")
+sc_df.index = sc_gene["gene_symbol"]
+sc_df = sc_df.drop("Unnamed: 0", axis=1)
+sc_df = sc_df.T
+# select cells so that we can shorter the training time 
+random.seed(2333)
+idx = random.sample(range(sc_df.shape[0]), 3000)
+sc_df_f = sc_df.iloc[idx, :]
+
+# change the dataframe to anndata format 
+sp_adata = sc.AnnData(mat_f)
+sc_adata = sc.AnnData(sc_df_f)
+# filter the low expressed genes
+sc.pp.filter_genes(sp_adata, min_cells=1)
+sc.pp.filter_genes(sc_adata, min_cells=1)
+
+# train the model
+mapper.pp_adatas(sc_adata, sp_adata)
+map = mapper.mapping(sc_adata, sp_adata, pthw_genes, sp_coords=coords[["centroidX", "centroidY"]],
+                     ncell_thres=10, sp_celltypes=cluster_f["cluster"], lambda_g2=2, num_epochs=500)
+# get the predictions
+pthw_exp = utils.project_genes(adata_map=map, adata_sc=sc_adata, pthw=genes)
+# we can save the predictions as csv file for the downstream analysis
+d = pd.DataFrame([pthw_exp.values, coords.loc[:, "centroidX"], coords.loc[:, "centroidY"]])
+d = d.T
+d.columns = ["pthw_exp", "x", "y"]
+d.to_csv("./predicted.csv")
+```
+
+# CosMx Human frontal cortex dataset
+## Imputation
+The ST dataset can be downloaded from https://nanostring.com/products/cosmx-spatial-molecular-imager/ffpe-dataset/human-frontal-cortex-ffpe-dataset/. The scRNA-seq dataset is collected from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE104276. 
+
+```
+# the following script is written in py3
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+# load the ST dataset 
+# teh expression and coords are obtained from the CosMX website.
+mat = pd.read_csv("expression_rnanormalized.csv")
+mat.index = mat.iloc[:, 0]
+mat_f = mat.drop("Unnamed: 0", axis=1)
+mat_f = mat_f.T
+coords = pd.read_csv("coords.csv")
+coords.index = coords.iloc[:, 0]
+
+# load the scRNA-seq dataset
+sc_df = pd.read_csv("../cosmx/hm_frontal_cortex/GSE104276_count.csv")
+sc_df.index = sc_df.iloc[:, 0]
+sc_df = sc_df.drop("Unnamed: 0", axis=1)
+sc_df = sc_df.T
+
+# change the dataframe to anndata format 
+sp_adata = sc.AnnData(mat_f)
+sc_adata = sc.AnnData(sc_df_f)
+# filter the low expressed genes
+sc.pp.filter_genes(sp_adata, min_cells=1)
+sc.pp.filter_genes(sc_adata, min_cells=1)
+
+# train the model
+mapper.pp_adatas(sc_adata, sp_adata)
+map = mapper.mapping(sc_adata, sp_adata, pthw_genes, sp_coords=coords[["x_slide_mm", "y_slide_mm"]], 
+                     ncell_thres=10, sp_celltypes=coords["RNA_nbclust_clusters_refined"], 
+                     lambda_g2=2, num_epochs=500)
+# get the predictions
+pthw_exp = utils.project_genes(adata_map=map, adata_sc=sc_adata, pthw=genes)
+# we can save the predictions as csv file for the downstream analysis
+d = pd.DataFrame([pthw_exp.values, coords.loc[:, "x_slide_mm"], coords.loc[:, "y_slide_mm"]])
+d = d.T
+d.columns = ["pthw_exp", "x", "y"]
+d.to_csv("./predicted.csv")
+```
+
+## Apply tissue
+```
+# the step by step tissue tutorial can be found from its github: https://github.com/sunericd/TISSUE
+
+import tissue.main, tissue.downstream
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import scanpy as sc
+import anndata as ad
+import os
+import seaborn as sns
+
+# first, we read the predictions 
+# each csv file should be the pathway-by-cell expressoin matrix.
+tangram = pd.read_csv("path_to_tangram_pathway_pred.csv", index_col=0)
+spage = pd.read_csv("path_to_spage_pathway_pred.csv", index_col=0)
+seurat = pd.read_csv("path_to_seurat_pathway_pred.csv", index_col=0)
+stdiff = pd.read_csv("path_to_stdiff_pathway_pred.csv", index_col=0)
+stplus = pd.read_csv(".path_to_stplus_pathway_pred.csv", index_col=0)
+gimvi = pd.read_csv(".path_to_gimvi_pathway_pred.csv", index_col=0)
+pasta =  pd.read_csv("path_to_pasta_pathway_predict.csv", index_col=0)
+true = pd.read_csv("path_to_true_pathway_pred.csv", index_col=0)
+
+# read coordinates 
+coords = pd.read_csv("path_to_coords.csv", index_col=0)
+
+# set index if the prediction matrix index is not cell name
+true.columns = coords.index
+tangram.columns = coords.index
+pasta.columns = coords.index
+spage.columns = coords.index
+seurat.columns = coords.index
+stplus.columns = coords.index
+gimvi.columns = coords.index
+stdiff.columns = coords.index
+
+# set up anndata for tissue
+myadata = sc.AnnData(true.T)
+myadata.obsm["spatial"] = coords[["x_slide_mm", "y_slide_mm"]]
+myadata.obsm["tangram_predict"] = tangram.T
+myadata.obsm["pasta_predict"] = pasta.T
+myadata.obsm["spage_predict"] = spage.T
+myadata.obsm["seurat_predict"] = seurat.T
+myadata.obsm["stplus_predict"] = stplus.T
+myadata.obsm["gimvi_predict"] = gimvi.T
+myadata.obsm["stdiff_predict"] = stdiff.T
+
+tissue.main.build_spatial_graph(myadata, method="fixed_radius", n_neighbors=15)
+tissue.main.conformalize_spatial_uncertainty(myadata, "pasta_predict", calib_genes=myadata.var_names,
+        grouping_method="kmeans_gene_cell", k=4, k2=2)
+tissue.main.conformalize_spatial_uncertainty(myadata, "tangram_predict", calib_genes=myadata.var_names,
+        grouping_method="kmeans_gene_cell", k=4, k2=2)
+tissue.main.conformalize_spatial_uncertainty(myadata, "spage_predict", calib_genes=myadata.var_names,
+        grouping_method="kmeans_gene_cell", k=4, k2=2)
+tissue.main.conformalize_spatial_uncertainty(myadata, "stplus_predict", calib_genes=myadata.var_names,
+        grouping_method="kmeans_gene_cell", k=4, k2=2)
+tissue.main.conformalize_spatial_uncertainty(myadata, "gimvi_predict", calib_genes=myadata.var_names,
+        grouping_method="kmeans_gene_cell", k=4, k2=2)
+tissue.main.conformalize_spatial_uncertainty(myadata, "seurat_predict", calib_genes=myadata.var_names,
+        grouping_method="kmeans_gene_cell", k=4, k2=2)
+tissue.main.conformalize_spatial_uncertainty(myadata, "stdiff_predict", calib_genes=myadata.var_names,
+        grouping_method="kmeans_gene_cell", k=4, k2=2)
+
+# get the score 
+nn_pasta = myadata.obsm["pasta_predict_score"].to_numpy().flatten()
+nn_tangram = myadata.obsm["tangram_predict_score"].to_numpy().flatten()
+nn_spage = myadata.obsm["spage_predict_score"].to_numpy().flatten()
+nn_seurat = myadata.obsm["seurat_predict_score"].to_numpy().flatten()
+nn_gimvi = myadata.obsm["gimvi_predict_score"].to_numpy().flatten()
+nn_stplus = myadata.obsm["stplus_predict_score"].to_numpy().flatten()
+nn_stdiff = myadata_stdiff.obsm["stdiff_predict_score"].to_numpy().flatten()
+dd = pd.DataFrame([nn_pasta, nn_tangram, nn_spage, nn_seurat, nn_stplus, nn_stdiff, nn_gimvi])
+dd.index = ["PASTA", "Tangram", "SpaGE", "Seurat", "GimVI", "StPlus", "StDiff"]
+dd_box = dd.T
+
+p.clear()
+fig.clear()
+p = sns.kdeplot(dd_box)
+plt.xlim(0, 10)
+fig = p.get_figure()
+fig.savefig("overall_density.png")
+```

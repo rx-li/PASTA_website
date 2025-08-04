@@ -1,0 +1,249 @@
+# Real data appliation - Imputation
+
+## Human Xenium Lung Dataset 
+The ST dataset can be downloaded from https://www.10xgenomics.com/datasets/ffpe-human-lung-cancer-data-with-human-immuno-oncology-profiling-panel-and-custom-add-on-1-standard.
+The corresponding scRNA-seq dataset can be downloaded from https://cells.ucsc.edu/. 
+
+```
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+# ST data preprocess 
+mat = pd.read_csv("gene_expression_lung.csv") # the gene expression file from ST data
+mat.index = mat.iloc[\:, 0]
+mat_f = mat.drop("Unnamed: 0", axis=1)
+mat_f = mat_f.T
+
+# get the centroid for the cells 
+coords = pd.read_csv("centroid.csv") # the centroid file from ST data
+coords_f = coords.loc[coords["cell"].isin(mat_f.index), :]
+coords_f.index = coords_f["cell"]
+coords_f = coords_f.reindex(mat_f.index)
+
+# get the cluster file for the ST data 
+# we used the kmeans 7 clusters provided by the dataset 
+cluster = pd.read_csv("clusters.csv")
+cluster.index = cluster["Barcode"]
+cluster_f = cluster.loc[cluster["Barcode"].isin(mat_f.index), :]
+
+# read the scRNA-seq data
+# assume it is in the folder named as "SCdata"
+ad = sc.read_text("./SCdata/exprMatrix.tsv.gz")
+meta = pd.read_csv("./SCdata/meta.tsv", sep="\t")
+ad.var = meta
+sc_df = ad.to_df()
+sc_df.index = sc_df.index.str.split("|").str[0]
+sc_df.columns = ad.var["cellId"]
+# randomly select 3000 sc for training to shorter training time 
+idx = random.sample(range(sc_df.shape[1]), 3000)
+sc_df_f = sc_df.iloc[:, idx]
+sc_df_f = sc_df_f.T
+
+# then we can get pathway 
+# the pathway can be downloaded from https://www.gsea-msigdb.org/gsea/msigdb/collections.jsp
+# for this ST data, we used hallmark pathways. 
+# for the imputation, we just need the list of genes of the pathway  
+
+# change the dataframe to anndata format 
+sp_adata = sc.AnnData(mat_f)
+sc_adata = sc.AnnData(sc_df_f)
+# filter the low expressed genes
+sc.pp.filter_genes(sp_adata, min_cells=1)
+sc.pp.filter_genes(sc_adata, min_cells=1)
+
+# train the model
+mapper.pp_adatas(sc_adata, sp_adata)
+map = mapper.mapping(sc_adata, sp_adata, pthw_genes, sp_coords=coords, ncell_thres=10,
+    sp_celltypes=cluster["Cluster"], lambda_g2=2, num_epochs=500)
+# get the predictions
+pthw_exp = utils.project_genes(adata_map=map, adata_sc=sc_adata, pthw=genes)
+# we can save the predictions as csv file for the downstream analysis
+d = pd.DataFrame([pthw_exp.values, coords_f.loc[:, "x"], coords_f.loc[:, "y"]])
+d = d.T
+d.columns = ["pthw_exp", "x", "y"]
+d.to_csv("./predicted.csv")
+```
+
+## Mefish Mouse Brain Dataset 
+The ST dataset can be downloaded from https://alleninstitute.github.io/abc\_atlas\_access/descriptions/Zhuang-ABCA-3.html.
+A detailed download instructions is provided. The example session is 'Zhuang-ABCA-3': 'Zhuang-ABCA-3.010'. And we included the celltype (class) with more than 40 cells.
+A notebook of how we get the data can be found at our GitHub repo.
+The scRNA-seq dataset can be downloaded from https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq (Primary Visual Cortex (VISp)). 
+
+```
+# the following script is written in py3
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+# load the sp data 
+gene = pd.read_csv("../merfish_zhang/gene.csv")
+sp = sc.read_h5ad("../merfish_zhang/abca3.h5ad")
+mat = pd.DataFrame(sp.X)
+mat.index = sp.obs.index
+mat.columns = gene["gene_symbol"]
+# get the coords dataframe 
+coords = sp.obs.iloc[:, 6:16]
+
+# load the scRNA-seq
+sc_df = pd.read_csv("./mouse_VISp_2018-06-14_intron-matrix.csv") # downloaded from Allen institute 
+sc_gene = pd.read_csv("./mouse_VISp_2018-06-14_genes-rows.csv")
+sc_df.index = sc_gene["gene_symbol"]
+sc_df = sc_df.drop("Unnamed: 0", axis=1)
+sc_df = sc_df.T
+# select cells so that we can shorter the training time 
+random.seed(2333)
+idx = random.sample(range(sc_df.shape[0]), 3000)
+sc_df_f = sc_df.iloc[idx, :]
+
+sp_adata = sc.AnnData(mat)
+sc_adata = sc.AnnData(sc_df_f)
+
+sc.pp.filter_genes(sp_adata, min_cells=1)
+sc.pp.filter_genes(sc_adata, min_cells=20)
+
+# then we can get pathway 
+# the pathway can be downloaded from https://www.gsea-msigdb.org/gsea/msigdb/collections.jsp
+# for this ST data, we used GOBP pathways which name contains brain. 
+# for the imputation, we just need the list of genes of the pathway  
+
+# train the model
+mapper.pp_adatas(sc_adata, sp_adata)
+map = mapper.mapping(sc_adata, sp_adata, pthw_genes, sp_coords=coords[["x", "y"]], 
+                     ncell_thres=10, sp_celltypes=coords["class"], lambda_g2=2, 
+                     num_epochs=500)
+# get the predictions
+pthw_exp = utils.project_genes(adata_map=map, adata_sc=sc_adata, pthw=pthw_genes)
+# we can save the predictions as csv file for the downstream analysis
+d = pd.DataFrame([pthw_exp.values, coords.loc[:, "x"], coords.loc[:, "y"]])
+d = d.T
+d.columns = ["pthw_exp", "x", "y"]
+d.to_csv("./predicted.csv")
+```
+
+## ISS Mouse Primary Visula Cortex Dataset
+The dataset can be downloaded from https://github.com/spacetx-spacejam/data (ISS, mouse VISP). 
+The scRNA-seq dataset can be downloaded from https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq (Primary Visual Cortex (VISp))
+```
+# the following script is written in py3
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+sp = pd.read_csv("../mouse_visp_iss/HCA09_2_cellxgene.csv")
+#sp = sp.loc[sp["centroidX"] < 30000, :]
+coords = sp.iloc[:, 120:122]
+sp = sp.iloc[:, 1:120]
+
+# the cluster can be found in our GitHub repo
+# the cluster was obtained using the R package Seurat 
+cluster_f = pd.read_csv("./mm09_seurat_cluster.csv")
+
+# load the scRNA-seq
+sc_df = pd.read_csv("./mouse_VISp_2018-06-14_intron-matrix.csv") # downloaded from Allen institute 
+sc_gene = pd.read_csv("./mouse_VISp_2018-06-14_genes-rows.csv")
+sc_df.index = sc_gene["gene_symbol"]
+sc_df = sc_df.drop("Unnamed: 0", axis=1)
+sc_df = sc_df.T
+# select cells so that we can shorter the training time 
+random.seed(2333)
+idx = random.sample(range(sc_df.shape[0]), 3000)
+sc_df_f = sc_df.iloc[idx, :]
+
+# change the dataframe to anndata format 
+sp_adata = sc.AnnData(mat_f)
+sc_adata = sc.AnnData(sc_df_f)
+# filter the low expressed genes
+sc.pp.filter_genes(sp_adata, min_cells=1)
+sc.pp.filter_genes(sc_adata, min_cells=1)
+
+# train the model
+mapper.pp_adatas(sc_adata, sp_adata)
+map = mapper.mapping(sc_adata, sp_adata, pthw_genes, sp_coords=coords[["centroidX", "centroidY"]],
+                     ncell_thres=10, sp_celltypes=cluster_f["cluster"], lambda_g2=2, num_epochs=500)
+# get the predictions
+pthw_exp = utils.project_genes(adata_map=map, adata_sc=sc_adata, pthw=genes)
+# we can save the predictions as csv file for the downstream analysis
+d = pd.DataFrame([pthw_exp.values, coords.loc[:, "centroidX"], coords.loc[:, "centroidY"]])
+d = d.T
+d.columns = ["pthw_exp", "x", "y"]
+d.to_csv("./predicted.csv")
+```
+
+## CosMx Human frontal cortex dataset
+The ST dataset can be downloaded from https://nanostring.com/products/cosmx-spatial-molecular-imager/ffpe-dataset/human-frontal-cortex-ffpe-dataset/. The scRNA-seq dataset is collected from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE104276. 
+
+```
+# the following script is written in py3
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils
+
+# load the ST dataset 
+# teh expression and coords are obtained from the CosMX website.
+mat = pd.read_csv("expression_rnanormalized.csv")
+mat.index = mat.iloc[:, 0]
+mat_f = mat.drop("Unnamed: 0", axis=1)
+mat_f = mat_f.T
+coords = pd.read_csv("coords.csv")
+coords.index = coords.iloc[:, 0]
+
+# load the scRNA-seq dataset
+sc_df = pd.read_csv("../cosmx/hm_frontal_cortex/GSE104276_count.csv")
+sc_df.index = sc_df.iloc[:, 0]
+sc_df = sc_df.drop("Unnamed: 0", axis=1)
+sc_df = sc_df.T
+
+# change the dataframe to anndata format 
+sp_adata = sc.AnnData(mat_f)
+sc_adata = sc.AnnData(sc_df_f)
+# filter the low expressed genes
+sc.pp.filter_genes(sp_adata, min_cells=1)
+sc.pp.filter_genes(sc_adata, min_cells=1)
+
+# train the model
+mapper.pp_adatas(sc_adata, sp_adata)
+map = mapper.mapping(sc_adata, sp_adata, pthw_genes, sp_coords=coords[["x_slide_mm", "y_slide_mm"]], 
+                     ncell_thres=10, sp_celltypes=coords["RNA_nbclust_clusters_refined"], 
+                     lambda_g2=2, num_epochs=500)
+# get the predictions
+pthw_exp = utils.project_genes(adata_map=map, adata_sc=sc_adata, pthw=genes)
+# we can save the predictions as csv file for the downstream analysis
+d = pd.DataFrame([pthw_exp.values, coords.loc[:, "x_slide_mm"], coords.loc[:, "y_slide_mm"]])
+d = d.T
+d.columns = ["pthw_exp", "x", "y"]
+d.to_csv("./predicted.csv")
+```

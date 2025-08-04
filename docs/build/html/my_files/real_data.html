@@ -1,0 +1,507 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Human Xenium Lung Dataset &mdash; PASTA  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Simulation data" href="simulation_data.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            PASTA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get started:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quick_start.html">Quick start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Simulation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="simulation_data.html">Simulation data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulation_data.html#simulation-code-for-pasta">Simulation code for PASTA</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Real data application:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Human Xenium Lung Dataset</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#imputation">Imputation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pathway-enrichment-run-in-r">Pathway enrichment (run in R)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#mefish-mouse-brain-dataset">Mefish Mouse Brain Dataset</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">Imputation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cluster-using-the-pathway-matrix">Cluster using the pathway matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#trajectory-analysis-run-in-r">Trajectory analysis (run in R)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#iss-mouse-primary-visula-cortex-dataset">ISS Mouse Primary Visula Cortex Dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#cosmx-human-frontal-cortex-dataset">CosMx Human frontal cortex dataset</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id2">Imputation</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PASTA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Human Xenium Lung Dataset</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/my_files/real_data.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="human-xenium-lung-dataset">
+<h1>Human Xenium Lung Dataset<a class="headerlink" href="#human-xenium-lung-dataset" title="Link to this heading"></a></h1>
+<section id="imputation">
+<h2>Imputation<a class="headerlink" href="#imputation" title="Link to this heading"></a></h2>
+<p>The ST dataset can be downloaded from https://www.10xgenomics.com/datasets/ffpe-human-lung-cancer-data-with-human-immuno-oncology-profiling-panel-and-custom-add-on-1-standard.
+The corresponding scRNA-seq dataset can be downloaded from https://cells.ucsc.edu/.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;./pasta&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">__init__</span>
+<span class="kn">import</span> <span class="nn">_version</span>
+<span class="kn">import</span> <span class="nn">optimizer</span>
+<span class="kn">import</span> <span class="nn">mapper</span>
+<span class="kn">import</span> <span class="nn">utils</span>
+
+<span class="c1"># ST data preprocess </span>
+<span class="n">mat</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;gene_expression_lung.csv&quot;</span><span class="p">)</span> <span class="c1"># the gene expression file from ST data</span>
+<span class="n">mat</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span>\<span class="p">:,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">mat_f</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;Unnamed: 0&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">mat_f</span> <span class="o">=</span> <span class="n">mat_f</span><span class="o">.</span><span class="n">T</span>
+
+<span class="c1"># get the centroid for the cells </span>
+<span class="n">coords</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;centroid.csv&quot;</span><span class="p">)</span> <span class="c1"># the centroid file from ST data</span>
+<span class="n">coords_f</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">coords</span><span class="p">[</span><span class="s2">&quot;cell&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">mat_f</span><span class="o">.</span><span class="n">index</span><span class="p">),</span> <span class="p">:]</span>
+<span class="n">coords_f</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">coords_f</span><span class="p">[</span><span class="s2">&quot;cell&quot;</span><span class="p">]</span>
+<span class="n">coords_f</span> <span class="o">=</span> <span class="n">coords_f</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">mat_f</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+<span class="c1"># get the cluster file for the ST data </span>
+<span class="c1"># we used the kmeans 7 clusters provided by the dataset </span>
+<span class="n">cluster</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;clusters.csv&quot;</span><span class="p">)</span>
+<span class="n">cluster</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">cluster</span><span class="p">[</span><span class="s2">&quot;Barcode&quot;</span><span class="p">]</span>
+<span class="n">cluster_f</span> <span class="o">=</span> <span class="n">cluster</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">cluster</span><span class="p">[</span><span class="s2">&quot;Barcode&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">mat_f</span><span class="o">.</span><span class="n">index</span><span class="p">),</span> <span class="p">:]</span>
+
+<span class="c1"># read the scRNA-seq data</span>
+<span class="c1"># assume it is in the folder named as &quot;SCdata&quot;</span>
+<span class="n">ad</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="s2">&quot;./SCdata/exprMatrix.tsv.gz&quot;</span><span class="p">)</span>
+<span class="n">meta</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;./SCdata/meta.tsv&quot;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">ad</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="n">meta</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+<span class="n">sc_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;|&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">sc_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">&quot;cellId&quot;</span><span class="p">]</span>
+<span class="c1"># randomly select 3000 sc for training to shorter training time </span>
+<span class="n">idx</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">sc_df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="mi">3000</span><span class="p">)</span>
+<span class="n">sc_df_f</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">]</span>
+<span class="n">sc_df_f</span> <span class="o">=</span> <span class="n">sc_df_f</span><span class="o">.</span><span class="n">T</span>
+
+<span class="c1"># then we can get pathway </span>
+<span class="c1"># the pathway can be downloaded from https://www.gsea-msigdb.org/gsea/msigdb/collections.jsp</span>
+<span class="c1"># for this ST data, we used hallmark pathways. </span>
+<span class="c1"># for the imputation, we just need the list of genes of the pathway  </span>
+
+<span class="c1"># change the dataframe to anndata format </span>
+<span class="n">sp_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">mat_f</span><span class="p">)</span>
+<span class="n">sc_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">sc_df_f</span><span class="p">)</span>
+<span class="c1"># filter the low expressed genes</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">sp_adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># train the model</span>
+<span class="n">mapper</span><span class="o">.</span><span class="n">pp_adatas</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">sp_adata</span><span class="p">)</span>
+<span class="nb">map</span> <span class="o">=</span> <span class="n">mapper</span><span class="o">.</span><span class="n">mapping</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">sp_adata</span><span class="p">,</span> <span class="n">pthw_genes</span><span class="p">,</span> <span class="n">sp_coords</span><span class="o">=</span><span class="n">coords</span><span class="p">,</span> <span class="n">ncell_thres</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">sp_celltypes</span><span class="o">=</span><span class="n">cluster</span><span class="p">[</span><span class="s2">&quot;Cluster&quot;</span><span class="p">],</span> <span class="n">lambda_g2</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">num_epochs</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="c1"># get the predictions</span>
+<span class="n">pthw_exp</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">project_genes</span><span class="p">(</span><span class="n">adata_map</span><span class="o">=</span><span class="nb">map</span><span class="p">,</span> <span class="n">adata_sc</span><span class="o">=</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">pthw</span><span class="o">=</span><span class="n">genes</span><span class="p">)</span>
+<span class="c1"># we can save the predictions as csv file for the downstream analysis</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">pthw_exp</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">coords_f</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">coords_f</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;y&quot;</span><span class="p">]])</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">T</span>
+<span class="n">d</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pthw_exp&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]</span>
+<span class="n">d</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;./predicted.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="pathway-enrichment-run-in-r">
+<h2>Pathway enrichment (run in R)<a class="headerlink" href="#pathway-enrichment-run-in-r" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>library(dplyr)
+
+path &lt;- &quot;path_to_imputed_pathway_folder&quot; # the folder contains the CSV files for the pathways (pathway1.csv, pathway2.csv, ...)
+f &lt;- list.files(path)
+
+# read the cell type file
+celltype &lt;- read.csv(&quot;celltype.csv&quot;) # change to your own cell type file
+celltype_table &lt;- table(celltype$cell_type) # a table to see cell count for each cell type 
+
+test &lt;- NULL
+for(i in seq(f_immun)){
+        wilc_test &lt;- NULL
+        for(j in seq(nrow(cell_table))){
+                d &lt;- read.csv(paste0(path, f[i])) # this read the imputed pathway 
+                d$cell_type &lt;- celltype$cell_type
+                d$group &lt;- ifelse(d$Cell_type == cell_table$Var1[j], 1, 2)
+                wilc_test[[j]] &lt;- wilcox.test(X0 ~ group, data=d, alternative=&quot;greater&quot;)
+        }
+        test[[i]] &lt;- wilc_test
+}
+
+test_table &lt;- NULL
+for(i in seq(test)){
+        target &lt;- test[[i]]
+        target &lt;- lapply(target, function(y) data.frame(wilcox_stat = y$statistic, wilcox_p = y$p.value))
+        target &lt;- do.call(rbind, target)
+        target$cell_type &lt;- cell_table$Var1
+        target$pathway &lt;- gsub(&quot;.csv&quot;, &quot;&quot;, f_immun[i])
+        test_table[[i]] &lt;- target
+}
+
+test_table &lt;- do.call(rbind, test_table)
+test_table[test_table$wilcox_p &gt;= 0.05, ]$wilcox_stat &lt;- NA
+
+# generate the plot
+ggplot(test_table, aes(celltype, pathway, size=wilcox_stat, color=celltype)) + geom_point() +
+    theme_classic() + scale_color_npg() + labs(x=&quot;Cell type&quot;) +
+    theme(legend.position=&quot;none&quot;,
+        axis.text.x=element_text(angle=30, hjust=1),
+        axis.text.y=element_text(size=8),
+        axis.title.y=element_blank())
+</pre></div>
+</div>
+</section>
+</section>
+<section id="mefish-mouse-brain-dataset">
+<h1>Mefish Mouse Brain Dataset<a class="headerlink" href="#mefish-mouse-brain-dataset" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>Imputation<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>The ST dataset can be downloaded from https://alleninstitute.github.io/abc_atlas_access/descriptions/Zhuang-ABCA-3.html.
+A detailed download instructions is provided. The example session is ‘Zhuang-ABCA-3’: ‘Zhuang-ABCA-3.010’. And we included the celltype (class) with more than 40 cells.
+A notebook of how we get the data can be found at our GitHub repo.
+The scRNA-seq dataset can be downloaded from https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq (Primary Visual Cortex (VISp)).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># the following script is written in py3</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;./pasta&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">__init__</span>
+<span class="kn">import</span> <span class="nn">_version</span>
+<span class="kn">import</span> <span class="nn">optimizer</span>
+<span class="kn">import</span> <span class="nn">mapper</span>
+<span class="kn">import</span> <span class="nn">utils</span>
+
+<span class="c1"># load the sp data </span>
+<span class="n">gene</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;../merfish_zhang/gene.csv&quot;</span><span class="p">)</span>
+<span class="n">sp</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;../merfish_zhang/abca3.h5ad&quot;</span><span class="p">)</span>
+<span class="n">mat</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">X</span><span class="p">)</span>
+<span class="n">mat</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">index</span>
+<span class="n">mat</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">gene</span><span class="p">[</span><span class="s2">&quot;gene_symbol&quot;</span><span class="p">]</span>
+<span class="c1"># get the coords dataframe </span>
+<span class="n">coords</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">6</span><span class="p">:</span><span class="mi">16</span><span class="p">]</span>
+
+<span class="c1"># load the scRNA-seq</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;./mouse_VISp_2018-06-14_intron-matrix.csv&quot;</span><span class="p">)</span> <span class="c1"># downloaded from Allen institute </span>
+<span class="n">sc_gene</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;./mouse_VISp_2018-06-14_genes-rows.csv&quot;</span><span class="p">)</span>
+<span class="n">sc_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">sc_gene</span><span class="p">[</span><span class="s2">&quot;gene_symbol&quot;</span><span class="p">]</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;Unnamed: 0&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">T</span>
+<span class="c1"># select cells so that we can shorter the training time </span>
+<span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">2333</span><span class="p">)</span>
+<span class="n">idx</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">sc_df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">3000</span><span class="p">)</span>
+<span class="n">sc_df_f</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">:]</span>
+
+<span class="n">sp_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+<span class="n">sc_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">sc_df_f</span><span class="p">)</span>
+
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">sp_adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+<span class="c1"># then we can get pathway </span>
+<span class="c1"># the pathway can be downloaded from https://www.gsea-msigdb.org/gsea/msigdb/collections.jsp</span>
+<span class="c1"># for this ST data, we used GOBP pathways which name contains brain. </span>
+<span class="c1"># for the imputation, we just need the list of genes of the pathway  </span>
+
+<span class="c1"># train the model</span>
+<span class="n">mapper</span><span class="o">.</span><span class="n">pp_adatas</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">sp_adata</span><span class="p">)</span>
+<span class="nb">map</span> <span class="o">=</span> <span class="n">mapper</span><span class="o">.</span><span class="n">mapping</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">sp_adata</span><span class="p">,</span> <span class="n">pthw_genes</span><span class="p">,</span> <span class="n">sp_coords</span><span class="o">=</span><span class="n">coords</span><span class="p">[[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]],</span> 
+                     <span class="n">ncell_thres</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">sp_celltypes</span><span class="o">=</span><span class="n">coords</span><span class="p">[</span><span class="s2">&quot;class&quot;</span><span class="p">],</span> <span class="n">lambda_g2</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+                     <span class="n">num_epochs</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="c1"># get the predictions</span>
+<span class="n">pthw_exp</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">project_genes</span><span class="p">(</span><span class="n">adata_map</span><span class="o">=</span><span class="nb">map</span><span class="p">,</span> <span class="n">adata_sc</span><span class="o">=</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">pthw</span><span class="o">=</span><span class="n">pthw_genes</span><span class="p">)</span>
+<span class="c1"># we can save the predictions as csv file for the downstream analysis</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">pthw_exp</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">coords</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">coords</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;y&quot;</span><span class="p">]])</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">T</span>
+<span class="n">d</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pthw_exp&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]</span>
+<span class="n">d</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;./predicted.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="cluster-using-the-pathway-matrix">
+<h2>Cluster using the pathway matrix<a class="headerlink" href="#cluster-using-the-pathway-matrix" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">sklearn.cluster</span> <span class="kn">import</span> <span class="n">KMeans</span>
+
+<span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;path_to_pathway_expression_folder&quot;</span>
+<span class="n">f</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+<span class="n">data_l</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="n">file</span><span class="p">)</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s2">&quot;cell_label&quot;</span><span class="p">]</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;cell_label&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">d_sum</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">data_l</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d_sum</span><span class="p">)</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data_l</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">T</span>
+
+<span class="n">kmeans</span> <span class="o">=</span> <span class="n">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">kmeans</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="n">label_k2</span> <span class="o">=</span> <span class="n">kmeans</span><span class="o">.</span><span class="n">labels_</span>
+
+<span class="n">cluster</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">label_k2</span><span class="p">])</span>
+<span class="n">cluster</span> <span class="o">=</span> <span class="n">cluster</span><span class="o">.</span><span class="n">T</span>
+<span class="n">cluster</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;cluster_2&quot;</span><span class="p">]</span>
+<span class="n">cluster</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;kmeans_pathway_cluster.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="trajectory-analysis-run-in-r">
+<h2>Trajectory analysis (run in R)<a class="headerlink" href="#trajectory-analysis-run-in-r" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>library(monocle3)
+
+# read the meta file contains cells name of ST data and the cell types
+meta &lt;- read.csv(&quot;path_to_meta_file&quot;)
+
+path &lt;- &quot;path_to_pathway_expression_folder&quot;
+f &lt;- list.files(path)
+
+# read the pathwaye expression
+pthw_v &lt;- NULL
+for(i in seq(f)){
+        d &lt;- read.csv(paste0(path, f[i]))
+        # you might need to change &quot;pathway_expression&quot; depends on your 
+        pthw_v[[gsub(&quot;.csv&quot;, &quot;&quot;, f[i])]] &lt;- d$pathway_expression  
+}
+
+# prepare the matrix for monocle3
+pthw_mat &lt;- do.call(cbind, pthw_v)
+pthw_mat &lt;- t(pthw_mat)
+colnames(pthw_mat) &lt;- meta$cells
+
+gene_meta &lt;- data.frame(gene_short_name = rownames(pthw_mat), n_cells = rowSums(pthw_mat &gt; 0))
+cell_meta &lt;- data.frame(cell = colnames(pthw_mat))
+cell_meta$cell.type &lt;- meta$celltype
+cell_meta$num_gene_expressed &lt;- colSums(pthw_mat &gt; 0)
+rownames(cell_meta) &lt;- colnames(pthw_mat)
+
+# run monocle3
+cds &lt;- new_cell_data_set(pthw_mat, cell_meta, gene_meta)
+cds &lt;- preprocess_cds(cds, num_dim = 50)
+cds &lt;- reduce_dimension(cds)
+cds &lt;- cluster_cells(cds)
+cds &lt;- learn_graph(cds)
+cds &lt;- order_cells(cds, root_cells=&quot;a_cell_name&quot;) # you can choose the cell you want as the root 
+
+traj.plot &lt;- plot_cells(cds, color_cells_by = &quot;pseudotime&quot;)
+d_pseudotime &lt;- traj.plot[&quot;data&quot;] # this will be the dataframe contains pseudotime for each cell
+
+</pre></div>
+</div>
+</section>
+</section>
+<section id="iss-mouse-primary-visula-cortex-dataset">
+<h1>ISS Mouse Primary Visula Cortex Dataset<a class="headerlink" href="#iss-mouse-primary-visula-cortex-dataset" title="Link to this heading"></a></h1>
+<p>The dataset can be downloaded from https://github.com/spacetx-spacejam/data (ISS, mouse VISP).
+The scRNA-seq dataset can be downloaded from https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq (Primary Visual Cortex (VISp))</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># the following script is written in py3</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;./pasta&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">__init__</span>
+<span class="kn">import</span> <span class="nn">_version</span>
+<span class="kn">import</span> <span class="nn">optimizer</span>
+<span class="kn">import</span> <span class="nn">mapper</span>
+<span class="kn">import</span> <span class="nn">utils</span>
+
+<span class="n">sp</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;../mouse_visp_iss/HCA09_2_cellxgene.csv&quot;</span><span class="p">)</span>
+<span class="c1">#sp = sp.loc[sp[&quot;centroidX&quot;] &lt; 30000, :]</span>
+<span class="n">coords</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">120</span><span class="p">:</span><span class="mi">122</span><span class="p">]</span>
+<span class="n">sp</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">120</span><span class="p">]</span>
+
+<span class="c1"># the cluster can be found in our GitHub repo</span>
+<span class="c1"># the cluster was obtained using the R package Seurat </span>
+<span class="n">cluster_f</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;./mm09_seurat_cluster.csv&quot;</span><span class="p">)</span>
+
+<span class="c1"># load the scRNA-seq</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;./mouse_VISp_2018-06-14_intron-matrix.csv&quot;</span><span class="p">)</span> <span class="c1"># downloaded from Allen institute </span>
+<span class="n">sc_gene</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;./mouse_VISp_2018-06-14_genes-rows.csv&quot;</span><span class="p">)</span>
+<span class="n">sc_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">sc_gene</span><span class="p">[</span><span class="s2">&quot;gene_symbol&quot;</span><span class="p">]</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;Unnamed: 0&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">T</span>
+<span class="c1"># select cells so that we can shorter the training time </span>
+<span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">2333</span><span class="p">)</span>
+<span class="n">idx</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">sc_df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">3000</span><span class="p">)</span>
+<span class="n">sc_df_f</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">:]</span>
+
+<span class="c1"># change the dataframe to anndata format </span>
+<span class="n">sp_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">mat_f</span><span class="p">)</span>
+<span class="n">sc_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">sc_df_f</span><span class="p">)</span>
+<span class="c1"># filter the low expressed genes</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">sp_adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># train the model</span>
+<span class="n">mapper</span><span class="o">.</span><span class="n">pp_adatas</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">sp_adata</span><span class="p">)</span>
+<span class="nb">map</span> <span class="o">=</span> <span class="n">mapper</span><span class="o">.</span><span class="n">mapping</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">sp_adata</span><span class="p">,</span> <span class="n">pthw_genes</span><span class="p">,</span> <span class="n">sp_coords</span><span class="o">=</span><span class="n">coords</span><span class="p">[[</span><span class="s2">&quot;centroidX&quot;</span><span class="p">,</span> <span class="s2">&quot;centroidY&quot;</span><span class="p">]],</span>
+                     <span class="n">ncell_thres</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">sp_celltypes</span><span class="o">=</span><span class="n">cluster_f</span><span class="p">[</span><span class="s2">&quot;cluster&quot;</span><span class="p">],</span> <span class="n">lambda_g2</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">num_epochs</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="c1"># get the predictions</span>
+<span class="n">pthw_exp</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">project_genes</span><span class="p">(</span><span class="n">adata_map</span><span class="o">=</span><span class="nb">map</span><span class="p">,</span> <span class="n">adata_sc</span><span class="o">=</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">pthw</span><span class="o">=</span><span class="n">genes</span><span class="p">)</span>
+<span class="c1"># we can save the predictions as csv file for the downstream analysis</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">pthw_exp</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">coords</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;centroidX&quot;</span><span class="p">],</span> <span class="n">coords</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;centroidY&quot;</span><span class="p">]])</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">T</span>
+<span class="n">d</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pthw_exp&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]</span>
+<span class="n">d</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;./predicted.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="cosmx-human-frontal-cortex-dataset">
+<h1>CosMx Human frontal cortex dataset<a class="headerlink" href="#cosmx-human-frontal-cortex-dataset" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>Imputation<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>The ST dataset can be downloaded from https://nanostring.com/products/cosmx-spatial-molecular-imager/ffpe-dataset/human-frontal-cortex-ffpe-dataset/. The scRNA-seq dataset is collected from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE104276.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># the following script is written in py3</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;./pasta&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">__init__</span>
+<span class="kn">import</span> <span class="nn">_version</span>
+<span class="kn">import</span> <span class="nn">optimizer</span>
+<span class="kn">import</span> <span class="nn">mapper</span>
+<span class="kn">import</span> <span class="nn">utils</span>
+
+<span class="c1"># load the ST dataset </span>
+<span class="c1"># teh expression and coords are obtained from the CosMX website.</span>
+<span class="n">mat</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;expression_rnanormalized.csv&quot;</span><span class="p">)</span>
+<span class="n">mat</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">mat_f</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;Unnamed: 0&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">mat_f</span> <span class="o">=</span> <span class="n">mat_f</span><span class="o">.</span><span class="n">T</span>
+<span class="n">coords</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;coords.csv&quot;</span><span class="p">)</span>
+<span class="n">coords</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># load the scRNA-seq dataset</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;../cosmx/hm_frontal_cortex/GSE104276_count.csv&quot;</span><span class="p">)</span>
+<span class="n">sc_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;Unnamed: 0&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sc_df</span> <span class="o">=</span> <span class="n">sc_df</span><span class="o">.</span><span class="n">T</span>
+
+<span class="c1"># change the dataframe to anndata format </span>
+<span class="n">sp_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">mat_f</span><span class="p">)</span>
+<span class="n">sc_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">sc_df_f</span><span class="p">)</span>
+<span class="c1"># filter the low expressed genes</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">sp_adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">min_cells</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># train the model</span>
+<span class="n">mapper</span><span class="o">.</span><span class="n">pp_adatas</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">sp_adata</span><span class="p">)</span>
+<span class="nb">map</span> <span class="o">=</span> <span class="n">mapper</span><span class="o">.</span><span class="n">mapping</span><span class="p">(</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">sp_adata</span><span class="p">,</span> <span class="n">pthw_genes</span><span class="p">,</span> <span class="n">sp_coords</span><span class="o">=</span><span class="n">coords</span><span class="p">[[</span><span class="s2">&quot;x_slide_mm&quot;</span><span class="p">,</span> <span class="s2">&quot;y_slide_mm&quot;</span><span class="p">]],</span> 
+                     <span class="n">ncell_thres</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">sp_celltypes</span><span class="o">=</span><span class="n">coords</span><span class="p">[</span><span class="s2">&quot;RNA_nbclust_clusters_refined&quot;</span><span class="p">],</span> 
+                     <span class="n">lambda_g2</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">num_epochs</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="c1"># get the predictions</span>
+<span class="n">pthw_exp</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">project_genes</span><span class="p">(</span><span class="n">adata_map</span><span class="o">=</span><span class="nb">map</span><span class="p">,</span> <span class="n">adata_sc</span><span class="o">=</span><span class="n">sc_adata</span><span class="p">,</span> <span class="n">pthw</span><span class="o">=</span><span class="n">genes</span><span class="p">)</span>
+<span class="c1"># we can save the predictions as csv file for the downstream analysis</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">pthw_exp</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">coords</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;x_slide_mm&quot;</span><span class="p">],</span> <span class="n">coords</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;y_slide_mm&quot;</span><span class="p">]])</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">T</span>
+<span class="n">d</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pthw_exp&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]</span>
+<span class="n">d</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;./predicted.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="simulation_data.html" class="btn btn-neutral float-left" title="Simulation data" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ruoxing Li.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

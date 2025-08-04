@@ -1,0 +1,64 @@
+# Simulation data 
+Our simulation based on a list of stere-seq datasets which can be downloaded at 
+<https://db.cngb.org/stomics/artista/download/>. 
+
+# Simulation code for PASTA
+```
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import random
+import os, sys
+sys.path.append('./pasta')
+import __init__
+import _version
+import optimizer
+import mapper
+import utils 
+
+ss_df = anndata.read_h5ad("path_to_the_h5ad_file")
+
+pearson_cor = []
+spearman_cor = []
+mse = []
+random.seed(233)
+
+for i in range(30):
+    #random sample 3000 cells and 1000 genes as spatial
+    cells_n = random.sample(range(ss_df.shape[0]), 3000)
+    genes_n = random.sample(range(ss_df.shape[1]), 1000)
+    sp_adata = ss_df[cells_n, genes_n]
+    true_adata = ss_df[cells_n, ]
+
+    ss_df_2 = ss_df[~ss_df.obs.index.isin(sp_adata.obs.index), :]
+    cells_n2 = random.sample(range(ss_df_2.shape[0]), 6000)
+    sc_adata = ss_df_2[cells_n2, ]
+    # remove all-zero-valued genes
+    sc.pp.filter_genes(sp_adata, min_cells=1)
+    sc.pp.filter_genes(sc_adata, min_cells=1)
+    sc.pp.filter_genes(true_adata, min_cells=1)
+
+    # get dist information
+    dist = sp_adata.obsm["spatial"]
+    dist = pd.DataFrame.from_records(dist)
+
+    # random sample pathway
+    idx_n = random.sample(range(sp_adata.shape[1]), 50)
+    pathway = pd.DataFrame(sp_adata.var.index[idx_n])
+
+    # train the model
+    mapper.pp_adatas(sc_adata, sp_adata)
+    ad_map = mapper.mapping(sc_adata, sp_adata, genes, sp_coords=coords, ncell_thres=10,
+        sp_celltypes=cluster["Cluster"], lambda_g2=2, num_epochs=500)
+    pthw_exp = utils.project_genes(adata_map=ad_map, adata_sc=sc_adata, pthw=genes)
+    
+    true_df = true_adata.to_df()
+    true = true_df.loc[:, true_df.columns.isin(pathway["new_name"].str.lower())]
+    true_v = true.sum(axis=1)
+    pearson_cor.append(scipy.stats.pearsonr(pred_v, true_v)[0])
+    spearman_cor.append(scipy.stats.spearmanr(pred_v, true_v)[0])
+    mse.append(((pred_v - true_v)**2).mean())
+
+
+```
+
